@@ -1,0 +1,46 @@
+name: Sync Fork and Deploy
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Runs every 6 hours
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  sync-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/ottodiv/bolt.git
+          git fetch upstream
+          
+      - name: Sync fork
+        run: |
+          git checkout main
+          git merge upstream/main
+          git push origin main
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.15.1'
+          
+      - name: Install pnpm
+        run: npm install -g pnpm
+        
+      - name: Install dependencies
+        run: pnpm install
+        
+      - name: Build
+        run: pnpm run build
+        
+      - name: Deploy to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: pnpm wrangler pages deploy build/client --project-name bolt-myaibuilt-app-hosted-bolt-new-ottodev
